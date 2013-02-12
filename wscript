@@ -32,5 +32,10 @@ def build (env):
             "http-headers.cc",
             "http-request.cc",
             "http-response.cc",
+            
+            "framework/socketserver.cc",
+            "framework/protocoladapter.cc",
+            "framework/client.cc",
+            "adapters/proxyadapter.cc"
             ]
         )
