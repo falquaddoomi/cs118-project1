@@ -2,6 +2,17 @@
 #define __CLIENT_H__
 
 #include "basic.h"
+#include <stdexcept>
+
+class ClientException : public std::runtime_error {
+public:
+	ClientException(const std::string &msg):runtime_error(msg) { }
+};
+
+class ClientDisconnectException : public ClientException {
+public:
+	ClientDisconnectException(const std::string &msg):ClientException(msg) { }
+};
 
 class Client {
 public:
@@ -11,17 +22,17 @@ public:
 	// inlines
 	int getSocket() { return m_socket; }
 
-	// raw read/write methods
-	int sendto(const void *msg, int len, int flags);
-	int recvfrom(void *buf, int len, int flags);
-
 	// helper methods
-	int sendall(std::string msg);
+	void sendall(std::string msg);
+	std::string recvupto(const char *delimiter);
 
 protected:
 	int m_socket;
     struct sockaddr_storage m_addr; // connector's address information
     socklen_t m_addr_size;
+
+    // data left over from previous reads
+	std::string last_buffer;
 };
 
 #endif
