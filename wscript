@@ -14,7 +14,7 @@ def configure (env):
 #
 
     env.check_boost(lib='thread')
-    env.env.append_value('CXXFLAGS', ['-O0', '-g3', '-Wall', '-Werror'])
+    env.env.append_value('CXXFLAGS', ['-O0', '-g3', '-Wall', '-Werror', '-std=gnu++11'])
 
 def build (env):
     env.load ('compiler_c compiler_cxx')
@@ -24,6 +24,7 @@ def build (env):
         target = "http-proxy",
         features = ["cxx", "cxxprogram"],
        	use = 'BOOST BOOST_THREAD BOOST_FILESYSTEM BOOST_DATE_TIME sqlite3',
+		lib = ['sqlite3'],
         source = [
             # Put additional files here
             # ...
@@ -38,7 +39,23 @@ def build (env):
             "framework/client.cc",
 			"framework/cacher.cc",
             "framework/agents/httpagent.cc",
-            
+			
+			# libdbapi includes
+			"libdbapi/BlobStreambuf.cpp",
+			"libdbapi/BlobStream.cpp",
+			"libdbapi/SQLiteBinder.cpp",
+			"libdbapi/SQLiteColumnMetadata.cpp",
+			"libdbapi/SQLiteColumnsMetadata.cpp",
+			"libdbapi/SQLiteConnection.cpp",
+			"libdbapi/SQLiteConnectionHandle.cpp",
+			"libdbapi/SQLiteDriver.cpp",
+			"libdbapi/SQLitePreparedStatement.cpp",
+			"libdbapi/SQLiteResultColumn.cpp",
+			"libdbapi/SQLiteResultSet.cpp",
+			"libdbapi/SQLiteStatement.cpp",
+			"libdbapi/SQLiteStatementHandle.cpp",
+			"libdbapi/SqlStatement.cpp",
+
             "adapters/proxyadapter.cc"
             ]
         )
