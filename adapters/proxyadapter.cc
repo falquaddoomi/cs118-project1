@@ -30,7 +30,7 @@ int ProxyAdapter::connect(Client *client) {
 			client->sendall("\nYour request: " + req.GetHost() + "/" + req.GetPath() + "\n");
 
 			// step 3. spawn a thread to handle the request
-			boost::thread thr(boost::bind(&ProxyAdapter::handleRequest, this), client, req);
+			// boost::thread thr(boost::bind(&ProxyAdapter::handleRequest, this, client, req));
 		}
 		catch (ClientDisconnectException &e) {
 			// report and exit, since the client is gone
@@ -43,6 +43,9 @@ int ProxyAdapter::connect(Client *client) {
 			continue;
 		}
 		catch (ParseException &e) {
+			// send them a 'bad request' response
+			client->sendall(HttpAgent::makeResponse("400", "Bad Request"));
+
 			// report and continue to service requests
 			fprintf(stderr, "ParseException in ProxyAdapter::connect(): %s\n", e.what());
 			continue;

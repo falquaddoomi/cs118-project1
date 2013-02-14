@@ -3,9 +3,11 @@
 
 #include "../framework/basic.h"
 #include "../framework/protocoladapter.h"
+#include "../framework/agents/httpagent.h"
 
 #include "../http-request.h"
 
+// get boost stuff for threading and binding
 // the boost libs apparently have a lot of warnings, so we need to disable those first
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>

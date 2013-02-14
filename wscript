@@ -23,7 +23,7 @@ def build (env):
     server = env.program (
         target = "http-proxy",
         features = ["cxx", "cxxprogram"],
-        use = 'BOOST BOOST_THREAD BOOST_FILESYSTEM BOOST_DATE_TIME',
+       	use = 'BOOST BOOST_THREAD BOOST_FILESYSTEM BOOST_DATE_TIME',
         source = [
             # Put additional files here
             # ...
@@ -36,6 +36,8 @@ def build (env):
             "framework/socketserver.cc",
             "framework/protocoladapter.cc",
             "framework/client.cc",
+            "framework/agents/httpagent.cc",
+            
             "adapters/proxyadapter.cc"
             ]
         )
