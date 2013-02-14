@@ -8,6 +8,45 @@ Client::Client(int socket, sockaddr_storage addr, socklen_t addr_size) {
 	m_addr_size = addr_size;
 }
 
+Client::Client(std::string host, unsigned short port) {
+    struct addrinfo hints, *servinfo, *p;
+    int rv;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+	
+    // convert port number to a string (FIXME: this is stupid)
+    std::stringstream ss;
+    ss << port;
+    std::string port_str = ss.str();
+
+    if ((rv = getaddrinfo(host.c_str(), port_str.c_str(), &hints, &servinfo)) != 0) {
+		throw ClientException(std::string("getaddrinfo: ") + gai_strerror(rv) + "\n");
+    }
+
+    // loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+        if ((m_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("client: socket");
+            continue;
+        }
+
+        if (connect(m_socket, p->ai_addr, p->ai_addrlen) == -1) {
+            close(m_socket);
+            perror("client: connect");
+            continue;
+        }
+
+        break;
+    }
+
+    if (p == NULL)
+        throw ClientException( "client: failed to connect\n");
+
+    freeaddrinfo(servinfo); // all done with this structure
+}
+
 Client::~Client() {
 	close(m_socket);
 }

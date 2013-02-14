@@ -17,6 +17,7 @@ public:
 class Client {
 public:
 	Client(int socket, sockaddr_storage addr, socklen_t addr_size);
+	Client(std::string host, unsigned short port);
 	~Client();
 
 	// inlines

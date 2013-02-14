@@ -3,6 +3,8 @@
 
 #include "basic.h"
 
+#include <sqlite3.h>
+
 class CacheItem {
 public:
 
@@ -18,7 +20,6 @@ public:
 	const char CACHE_DIR[] = "cache";
 
 	// check if an item is in the cache and return it if so
-
 
 
 protected:

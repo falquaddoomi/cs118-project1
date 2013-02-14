@@ -161,7 +161,7 @@ int SocketServer::loop() {
             // loop through the attached protocol adapters,
             // passing this client to each one's connect() until one returns > 0
             for (std::vector<ProtocolAdapter *>::iterator it = m_adapters.begin(); it != m_adapters.end(); ++it) {
-				if ((*it)->connect(client) > 0)
+				if ((*it)->onConnect(client) > 0)
 					break;
 			}
 

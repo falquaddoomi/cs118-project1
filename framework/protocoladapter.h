@@ -15,7 +15,7 @@ public:
 	// interface functions for inheriting classes.
 	// returning >0 from any of these causes the
 	// chain of invocation to stop at this adapter
-	virtual int connect(Client *client) = 0;
+	virtual int onConnect(Client *client) = 0;
 
 protected:
 };
