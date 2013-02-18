@@ -23,7 +23,7 @@ public:
 
 class Cacher {
 public:
-	static Cacher& getInstance() { static Cacher instance; return instance; }
+	Cacher();
 	~Cacher();
 	
 	static const std::string DATABASE_NAME;
@@ -35,15 +35,7 @@ public:
 	void addCacheEntry(const CacheEntry& candidate);
 	
 protected:
-	up::db::SQLiteConnection *m_conn;
-	up::db::SQLitePreparedStatement m_getcache_stmt;
-	up::db::SQLitePreparedStatement m_insertcache_stmt;
-	
-private:
-	Cacher();
-	
-	Cacher(Cacher const&);
-	void operator=(Cacher const&);
+	up::db::SQLiteConnection m_conn;
 };
 
 #endif

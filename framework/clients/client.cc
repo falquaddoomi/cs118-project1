@@ -117,17 +117,6 @@ std::string Client::recvupto(const char *delimiter) {
 
 			// remove the end from recv_buffer and return it
 			recv_buffer.erase(found_pos + delim_length);
-			
-			/*
-			// DEBUG
-			std::replace(recv_buffer.begin(), recv_buffer.end(), '\r', 'r');
-			std::replace(recv_buffer.begin(), recv_buffer.end(), '\n', 'n');
-
-			
-			// DEBUG
-			std::cout << "**? last_buffer (" << last_buffer.length() << "): " << std::endl << "--[" << last_buffer << "]--" << std::endl << std::flush;
-			std::cout << "**! recv_buffer (" << recv_buffer.length() << "): " << std::endl << "--[" << recv_buffer << "]--" << std::endl << std::flush;
-			*/
 						
 			return recv_buffer;
 		}

@@ -1,12 +1,9 @@
 #include "proxyadapter.h"
 
 ProxyAdapter::ProxyAdapter() {
-	// "prime" the cache by forcing it to instantiate itself before any requests come in
-	Cacher::getInstance();
 }
 
 ProxyAdapter::~ProxyAdapter() {
-
 }
 
 const char *ProxyAdapter::getName() {
@@ -47,6 +44,14 @@ int ProxyAdapter::onConnect(Client *base_client) {
 
 			// step 2. spawn a thread to handle the request
 			boost::thread thr(boost::bind(&ProxyAdapter::handleRequest, this, client, req));
+			// ...and sleep for a second, since they're hitting us faster than we can cache, apparently
+			sleep(1);
+			
+			// optional step 3. if we got a Connection: close header, exit the process now (closing the connection, too)
+			if (req.FindHeader("Connection") == "close") {
+				fprintf(stderr, "Client sent Connection: close header, exiting\n");
+				break;
+			}
 		}
 		catch (ClientDisconnectException &e) {
 			// report and exit, since the client is gone
@@ -73,11 +78,10 @@ int ProxyAdapter::onConnect(Client *base_client) {
 }
 
 void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req) {
-	Cacher &c = Cacher::getInstance();
+	// a handle to the db, opened here
+	Cacher c;
+	// the response we're eventually going to send
 	FullHttpResponse fullResponse;
-	
-	// DEBUG
-	std::cout << "Made it to handleRequest()!" << std::endl << std::flush;
 	
 	try {
 		// if this request should not be from the cache, return the response verbatim
@@ -93,21 +97,14 @@ void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req) {
 		else {
 			// it's cacheable, so attempt to either get it from the cache or whatever
 			try {
-				// DEBUG
-				std::cout << "About to query cache for " << req.GetHost() << req.GetPath() << std::endl << std::flush;
-				
 				// retrieve from the cache
 				CacheEntry entry = c.getCacheEntry(req.GetHost(), req.GetPort(), req.GetPath());
-				
-				std::cout << "**% headers (" << entry.GetHeaders().length() << "): " << std::endl << "--[" << entry.GetHeaders() << "]--" << std::endl << std::flush;
-				
+
 				// format it into the response object
 				fullResponse.response.ParseResponse(entry.GetHeaders().c_str(), entry.GetHeaders().length());
 				fullResponse.body = entry.GetBody();
 			}
 			catch (CacherException &e) {
-				std::cout << "Cache MISS for " << req.GetHost() << req.GetPath() << std::endl << std::flush;
-				
 				// it's not in the cache or it's expired
 				// so retrieve it, cache it, and set CacheEntry to that!
 				
@@ -122,7 +119,7 @@ void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req) {
 				CacheEntry newEntry(req.GetHost(), req.GetPort(), req.GetPath());
 				newEntry.SetModified(fullResponse.response.FindHeader("Last-Modified"));
 				newEntry.SetExpires(fullResponse.response.FindHeader("Expires"));
-				newEntry.SetHeaders(HttpToolbox::requestToString(req))
+				newEntry.SetHeaders(HttpToolbox::responseToString(fullResponse.response));
 				newEntry.SetBody(fullResponse.body);
 				c.addCacheEntry(newEntry);
 				

@@ -10,7 +10,8 @@ HttpToolbox::~HttpToolbox() {
 
 std::string HttpToolbox::requestToString(HttpRequest request) {
 	// allocate buffer, which we'll delete in a hot second
-	char *buffer = new char[request.GetTotalLength()];
+	char *buffer = new char[request.GetTotalLength()+1];
+	std::fill_n(buffer, request.GetTotalLength()+1, 0);
 	request.FormatRequest(buffer);
 	std::string retval(buffer);
 	delete[] buffer;
@@ -21,7 +22,8 @@ std::string HttpToolbox::requestToString(HttpRequest request) {
 
 std::string HttpToolbox::responseToString(HttpResponse response) {
 	// allocate buffer, which we'll delete in a hot second
-	char *buffer = new char[response.GetTotalLength()];
+	char *buffer = new char[response.GetTotalLength()+1];
+	std::fill_n(buffer, response.GetTotalLength()+1, 0);
 	response.FormatResponse(buffer);
 	std::string retval(buffer);
 	delete[] buffer;
