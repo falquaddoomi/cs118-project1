@@ -9,6 +9,11 @@ public:
 	ClientException(const std::string &msg):runtime_error(msg) { }
 };
 
+class ClientTimeoutException : public ClientException {
+public:
+	ClientTimeoutException(const std::string &msg):ClientException(msg) { }
+};
+
 class ClientDisconnectException : public ClientException {
 public:
 	ClientDisconnectException(const std::string &msg):ClientException(msg) { }
@@ -17,7 +22,7 @@ public:
 class Client {
 public:
 	Client(int socket, sockaddr_storage addr, socklen_t addr_size);
-	Client(std::string host, unsigned short port);
+	Client(std::string host, unsigned short port, long timeout_secs = 0);
 	~Client();
 
 	// inlines
@@ -31,6 +36,7 @@ public:
 
 protected:
 	int m_socket;
+	bool m_istimeoutable; // true if the socket has a timeout value set
     struct sockaddr_storage m_addr; // connector's address information
     socklen_t m_addr_size;
 

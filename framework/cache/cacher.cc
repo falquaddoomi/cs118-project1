@@ -16,6 +16,7 @@ Cacher::Cacher():m_conn(DATABASE_NAME.c_str(), true, false) {
 }
 
 Cacher::~Cacher() {
+
 }
 
 CacheEntry Cacher::getCacheEntry(const std::string& host, unsigned short port, const std::string& path) {
@@ -35,8 +36,8 @@ CacheEntry Cacher::getCacheEntry(const std::string& host, unsigned short port, c
 	if (r.next()) {
 		// process the result set into a new CacheEntry and return it
 		CacheEntry temp(r[0].getString(), r[1].getInt(), r[2].getString());
-		temp.SetModified(r[3].getString());
-		temp.SetExpires(r[4].getString());
+		temp.SetModified(r[3].getString(), CacheEntry::ISO8601);
+		temp.SetExpires(r[4].getString(), CacheEntry::ISO8601);
 		temp.SetHeaders(r[5].getString());
 		
 		// copy the body blob into our body vector
@@ -67,10 +68,17 @@ void Cacher::addCacheEntry(const CacheEntry& candidate) {
 		.bind(candidate.GetHost())
 		.bind(candidate.GetPort())
 		.bind(candidate.GetPath())
-		.bind(candidate.GetModified())
-		.bind(candidate.GetExpires())
+		.bind(candidate.GetModified(CacheEntry::ISO8601))
+		.bind(candidate.GetExpires(CacheEntry::ISO8601))
 		.bind(candidate.GetHeaders())
 		.bindBlob((void *)blobBuffer, candidate.GetBody().size());
 	
 	insertcache_stmt.executeUpdate();
+}
+
+/**
+ * Deletes cache entries whose Expires time has elapsed from the db
+ */
+void Cacher::cleanupDB() {
+	m_conn.statement("delete from cache where expires < date('now')").executeUpdate();
 }

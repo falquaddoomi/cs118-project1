@@ -34,6 +34,9 @@ public:
 	// insert an entry into the cache, whether or not it exists
 	void addCacheEntry(const CacheEntry& candidate);
 	
+	// clean up any expired items in the cache
+	void cleanupDB();
+	
 protected:
 	up::db::SQLiteConnection m_conn;
 };

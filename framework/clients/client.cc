@@ -8,7 +8,7 @@ Client::Client(int socket, sockaddr_storage addr, socklen_t addr_size) {
 	m_addr_size = addr_size;
 }
 
-Client::Client(std::string host, unsigned short port) {
+Client::Client(std::string host, unsigned short port, long timeout_secs) {
     struct addrinfo hints, *servinfo, *p;
     int rv;
 
@@ -24,13 +24,25 @@ Client::Client(std::string host, unsigned short port) {
     if ((rv = getaddrinfo(host.c_str(), port_str.c_str(), &hints, &servinfo)) != 0) {
 		throw ClientException(std::string("getaddrinfo: ") + gai_strerror(rv) + "\n");
     }
-
+	
     // loop through all the results and connect to the first we can
     for(p = servinfo; p != NULL; p = p->ai_next) {
         if ((m_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             perror("client: socket");
             continue;
         }
+		
+		// set timeout if it's been specified
+		if (timeout_secs > 0) {
+			struct timeval tv;
+			tv.tv_sec = timeout_secs;
+			tv.tv_usec = 0;
+			
+			if (setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval)) != 0)
+				throw ClientException("setsockopt() failed to set a timeout");
+				
+			m_istimeoutable = true;
+		}
 
         if (connect(m_socket, p->ai_addr, p->ai_addrlen) == -1) {
             close(m_socket);
@@ -119,6 +131,11 @@ std::string Client::recvupto(const char *delimiter) {
 			recv_buffer.erase(found_pos + delim_length);
 						
 			return recv_buffer;
+		}
+		else if (m_istimeoutable && (recvlen < (int)(sizeof buffer - 1))) {
+			// we got less data, but the delimiter wasn't in it...this might've been a timeout
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				throw ClientTimeoutException("timed out on a recv()");
 		}
 
 		// update the total bytes read cursor

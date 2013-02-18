@@ -15,6 +15,10 @@ int ProxyAdapter::onConnect(Client *base_client) {
 	// first things first, we mint an HttpClient from our Client for convenience
 	HttpClient client(base_client);
 	
+	// thread serialization (so we return GETs in the order they were received)
+	int requestID = 0;
+	// int currentID = 0;
+
 	while (true) {
 		try {
 			// step 1. receive and parse their request
@@ -41,9 +45,32 @@ int ProxyAdapter::onConnect(Client *base_client) {
 				req.GetHost().c_str(),
 				req.GetPort(),
 				req.GetPath().c_str());
+				
+			if (requestID >= MAX_CONCURRENT_REQUESTS) {
+				// we can't service more than 10 requests per client
+				std::cout << "Dropping additional request, as limit of "
+					<< MAX_CONCURRENT_REQUESTS
+					<< " concurrent requests has already been reached" << std::endl << std::flush;
+				
+				// send them a 'client error' response
+				client.sendHttpResponse(HttpToolbox::makeResponse("429", "Too Many Requests"));
+				// and move on to the next request (hopefully we'll have cleared things up by then?)
+				continue;
+			}
 
 			// step 2. spawn a thread to handle the request
-			boost::thread thr(boost::bind(&ProxyAdapter::handleRequest, this, client, req));
+			boost::thread thr(boost::bind(&ProxyAdapter::handleRequest, this, client, req, requestID++));
+			
+			// ...optionally block for a given amount of time if REQUEST_THREAD_TIMEOUT_TIME > 0...
+			if (REQUEST_THREAD_TIMEOUT_SECONDS > 0) {
+				// we'll just get stuck here until the timer either expires or we 
+				if (!thr.timed_join(boost::posix_time::seconds(REQUEST_THREAD_TIMEOUT_SECONDS))) {
+					// REQUEST_THREAD_TIMEOUT_SECONDS seconds elapsed without a response; bail
+					client.sendHttpResponse(HttpToolbox::makeResponse("504", "Gateway Timeout"));
+					continue;
+				}
+			}
+			
 			// ...and sleep for a second, since they're hitting us faster than we can cache, apparently
 			sleep(1);
 			
@@ -77,7 +104,7 @@ int ProxyAdapter::onConnect(Client *base_client) {
 	return 0;
 }
 
-void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req) {
+void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req, int requestID) {
 	// a handle to the db, opened here
 	Cacher c;
 	// the response we're eventually going to send
@@ -87,18 +114,40 @@ void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req) {
 		// if this request should not be from the cache, return the response verbatim
 		if (req.FindHeader("Cache-Control") == "no-cache") {
 			// create a new client for the remote server to whom we'll be sending our calling client's request
-			Client *temp_client = new Client(req.GetHost(), req.GetPort());
-			HttpClient proxy_client(temp_client);
-			proxy_client.sendHttpRequest(req);
-			// get the response, but no caching here
-			fullResponse = proxy_client.getHttpResponse();
-			delete temp_client;
+			try {
+				boost::scoped_ptr<Client> temp_client(new Client(req.GetHost(), req.GetPort(), REQUEST_TIMEOUT_SECONDS));
+				HttpClient proxy_client(temp_client.get());
+				proxy_client.sendHttpRequest(req);
+				// get the response, but no caching here
+				fullResponse = proxy_client.getHttpResponse();
+			}
+			catch (ClientTimeoutException &e) {
+				// 30 seconds elapsed without a response; bail
+				client.sendHttpResponse(HttpToolbox::makeResponse("504", "Gateway Timeout"));
+				return;
+			}
 		}
 		else {
 			// it's cacheable, so attempt to either get it from the cache or whatever
 			try {
 				// retrieve from the cache
 				CacheEntry entry = c.getCacheEntry(req.GetHost(), req.GetPort(), req.GetPath());
+				
+				// handle conditional gets here
+				// if they supplied If-Modified-Since, check the cached object and only return it if it's newer
+				if (req.FindHeader("If-Modified-Since") != "") {
+					// attempt to parse the If-Modified-Since by passing it to entry.isModifiedAfter()
+					try {
+						if (!entry.isModifiedAfter(req.FindHeader("If-Modified-Since"), CacheEntry::HTTP_TIMESTAMP)) {
+							// send them a 304 not modified, since we have no newer document
+							client.sendHttpResponse(HttpToolbox::makeResponse("304", "Not Modified"));
+							return;
+						}
+					}
+					catch (CacheEntryInvalidTimestamp &e) {
+						// just continue...
+					}
+				}
 
 				// format it into the response object
 				fullResponse.response.ParseResponse(entry.GetHeaders().c_str(), entry.GetHeaders().length());
@@ -107,24 +156,29 @@ void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req) {
 			catch (CacherException &e) {
 				// it's not in the cache or it's expired
 				// so retrieve it, cache it, and set CacheEntry to that!
+				std::cout << "Cache miss for " << req.GetHost() << ":" << std::to_string(req.GetPort()) << req.GetPath() << std::endl << std::flush;
 				
 				// create a new client for the remote server to whom we'll be sending our calling client's request
-				Client *temp_client = new Client(req.GetHost(), req.GetPort());
-				HttpClient proxy_client(temp_client);
-				proxy_client.sendHttpRequest(req);
-				// get the response, cache it, then send it back to the caller
-				fullResponse = proxy_client.getHttpResponse();
+				try {
+					boost::scoped_ptr<Client> temp_client(new Client(req.GetHost(), req.GetPort(), REQUEST_TIMEOUT_SECONDS));
+					HttpClient proxy_client(temp_client.get());
+					proxy_client.sendHttpRequest(req);
+					// get the response, cache it, then send it back to the caller
+					fullResponse = proxy_client.getHttpResponse();
+				}
+				catch (ClientTimeoutException &e) {
+					// 30 seconds elapsed without a response; bail
+					client.sendHttpResponse(HttpToolbox::makeResponse("504", "Gateway Timeout"));
+					return;
+				}
 				
 				// ...and create/store our new cache entry
 				CacheEntry newEntry(req.GetHost(), req.GetPort(), req.GetPath());
-				newEntry.SetModified(fullResponse.response.FindHeader("Last-Modified"));
-				newEntry.SetExpires(fullResponse.response.FindHeader("Expires"));
+				newEntry.SetModified(fullResponse.response.FindHeader("Last-Modified"), CacheEntry::HTTP_TIMESTAMP);
+				newEntry.SetExpires(fullResponse.response.FindHeader("Expires"), CacheEntry::HTTP_TIMESTAMP);
 				newEntry.SetHeaders(HttpToolbox::responseToString(fullResponse.response));
 				newEntry.SetBody(fullResponse.body);
 				c.addCacheEntry(newEntry);
-				
-				// and finally delete the temp client
-				delete temp_client;
 			}
 		}
 	}
