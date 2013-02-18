@@ -27,5 +27,7 @@
 #include <sstream>
 #include <string>
 #include <exception>
+#include <stdexcept>
+#include <algorithm>
 
 #endif

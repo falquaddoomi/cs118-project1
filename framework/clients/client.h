@@ -1,7 +1,7 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-#include "basic.h"
+#include "../basic.h"
 #include <stdexcept>
 
 class ClientException : public std::runtime_error {
@@ -25,7 +25,9 @@ public:
 
 	// helper methods
 	void sendall(std::string msg);
+	void sendall(std::vector<char> data);
 	std::string recvupto(const char *delimiter);
+	std::vector<char> recvupto(unsigned long bytes_to_read);
 
 protected:
 	int m_socket;

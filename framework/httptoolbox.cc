@@ -1,14 +1,14 @@
-#include "httpagent.h"
+#include "httptoolbox.h"
 
-HttpAgent::HttpAgent() {
-
-}
-
-HttpAgent::~HttpAgent() {
+HttpToolbox::HttpToolbox() {
 
 }
 
-std::string HttpAgent::requestToString(HttpRequest request) {
+HttpToolbox::~HttpToolbox() {
+
+}
+
+std::string HttpToolbox::requestToString(HttpRequest request) {
 	// allocate buffer, which we'll delete in a hot second
 	char *buffer = new char[request.GetTotalLength()];
 	request.FormatRequest(buffer);
@@ -19,7 +19,7 @@ std::string HttpAgent::requestToString(HttpRequest request) {
 	return retval;
 }
 
-std::string HttpAgent::responseToString(HttpResponse response) {
+std::string HttpToolbox::responseToString(HttpResponse response) {
 	// allocate buffer, which we'll delete in a hot second
 	char *buffer = new char[response.GetTotalLength()];
 	response.FormatResponse(buffer);
@@ -30,21 +30,21 @@ std::string HttpAgent::responseToString(HttpResponse response) {
 	return retval;
 }
 
-std::string HttpAgent::makeRequest(std::string host, std::string path, unsigned short port) {
+HttpRequest HttpToolbox::makeRequest(std::string host, std::string path, unsigned short port) {
 	HttpRequest request;
 	request.SetHost(host);
 	request.SetMethod(HttpRequest::GET);
 	request.SetPath(path);
 	request.SetPort(port);
 
-	return requestToString(request);
+	return request;
 }
 
-std::string HttpAgent::makeResponse(std::string code, std::string message) {
+HttpResponse HttpToolbox::makeResponse(std::string code, std::string message) {
 	HttpResponse response;
 	response.SetStatusCode(code);
 	response.SetStatusMsg(message);
 	response.SetVersion("1.1");
 
-	return responseToString(response);
+	return response;
 }

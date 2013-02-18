@@ -54,9 +54,23 @@ Client::~Client() {
 // continually send until we've sent the entire message
 void Client::sendall(std::string msg) {
 	unsigned int sofar = 0;
-
+	
 	while (sofar < msg.length()) {
 		int retval = send(m_socket, msg.substr(sofar).c_str(), msg.substr(sofar).length(), 0);
+
+		if (retval < 0)
+			throw ClientException("Client::sendall(): send() returned non-zero value, e.g. error");
+
+		sofar += retval;
+	}
+}
+
+// continually send until we've sent the entire message, but binary style
+void Client::sendall(std::vector<char> data) {
+	unsigned int sofar = 0;
+	
+	while (sofar < data.size()) {
+		int retval = send(m_socket, &data[sofar], data.size() - sofar, 0);
 
 		if (retval < 0)
 			throw ClientException("Client::sendall(): send() returned non-zero value, e.g. error");
@@ -84,7 +98,7 @@ std::string Client::recvupto(const char *delimiter) {
 		// if the remote disconnected, we'll get back 0
 		// if an error occurred, we'll get back less than zero?
 		if (recvlen <= 0)
-			throw ClientDisconnectException("Client::recvupto(): recv() returned 0, connection closed");
+			throw ClientDisconnectException("Client::recvupto(): recv() returned <= 0, connection closed");
 
 		// nul-terminate the buffer; we know this is always possible
 		buffer[recvlen] = '\0';
@@ -93,7 +107,7 @@ std::string Client::recvupto(const char *delimiter) {
 		recv_buffer += buffer;
 
 		// check if it contains the delimiter
-		// but search only from the last successful read
+		// FIXME: but we should search only from the last successful read for efficiency...
 		size_t found_pos = recv_buffer.find(delimiter);
 
 		if (found_pos != std::string::npos) {
@@ -103,6 +117,18 @@ std::string Client::recvupto(const char *delimiter) {
 
 			// remove the end from recv_buffer and return it
 			recv_buffer.erase(found_pos + delim_length);
+			
+			/*
+			// DEBUG
+			std::replace(recv_buffer.begin(), recv_buffer.end(), '\r', 'r');
+			std::replace(recv_buffer.begin(), recv_buffer.end(), '\n', 'n');
+
+			
+			// DEBUG
+			std::cout << "**? last_buffer (" << last_buffer.length() << "): " << std::endl << "--[" << last_buffer << "]--" << std::endl << std::flush;
+			std::cout << "**! recv_buffer (" << recv_buffer.length() << "): " << std::endl << "--[" << recv_buffer << "]--" << std::endl << std::flush;
+			*/
+						
 			return recv_buffer;
 		}
 
@@ -110,5 +136,41 @@ std::string Client::recvupto(const char *delimiter) {
 		recvlen_total += recvlen;
 	}
 
-	// there's no returning from here...
+	// we return from within the while() (specifically when we've hit our delimiter), so no return here
+}
+
+std::vector<char> Client::recvupto(unsigned long bytes_to_read) {
+	// create an accumulator that we'll return
+	// this gets any leftover data from a previous call
+	std::vector<char> result(last_buffer.cbegin(), last_buffer.cend());
+	// also hold onto how many bytes we've read so far
+	unsigned long sofar = result.size();
+	// and finally init a place to store received data temporarily
+	char buffer[2048];
+
+	while (result.size() < bytes_to_read) {
+		// read up to buffer - 1
+		// (the "minus 1" is so we have a place to put the nul-terminator if we receive the max amount)
+		int recvlen = recv(m_socket, buffer, sizeof buffer - 1, 0);
+
+		if (recvlen <= 0)
+			throw ClientException("Client::recvupto(): recv() returned <= 0, connection closed");
+
+		// nul-terminate the buffer so that we can concatenate it to our accumulator
+		buffer[recvlen] = '\0';
+
+		// concat buffer
+		result.reserve(result.size() + recvlen);
+		result.insert(result.end(), buffer, buffer + recvlen);
+		// increment count
+		sofar += recvlen;
+	}
+	
+	if (result.size() >= last_buffer.size())
+		last_buffer.erase(); // we consumed the entire last_buffer
+	else
+		last_buffer.erase(result.size()); // we consumed only part of it
+	
+	// and return the total thing
+	return result;
 }

@@ -3,7 +3,7 @@
 
 #include "basic.h"
 
-#include "client.h"
+#include "clients/client.h"
 
 class ProtocolAdapter {
 public:

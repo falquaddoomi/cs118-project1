@@ -3,12 +3,14 @@
 
 #include "../framework/basic.h"
 #include "../framework/protocoladapter.h"
-#include "../framework/agents/httpagent.h"
+#include "../framework/httptoolbox.h"
+#include "../framework/cache/cacher.h"
+
+#include "../framework/clients/httpclient.h"
 
 #include "../http-request.h"
 
 // get boost stuff for threading and binding
-// the boost libs apparently have a lot of warnings, so we need to disable those first
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <boost/date_time.hpp>
@@ -23,7 +25,7 @@ public:
 	virtual int onConnect(Client *);
 
 protected:
-	void handleRequest(Client *, HttpRequest &);
+	void handleRequest(HttpClient, HttpRequest&);
 };
 
 #endif

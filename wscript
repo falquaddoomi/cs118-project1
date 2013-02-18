@@ -36,9 +36,11 @@ def build (env):
             
             "framework/socketserver.cc",
             "framework/protocoladapter.cc",
-            "framework/client.cc",
-			"framework/cacher.cc",
-            "framework/agents/httpagent.cc",
+            "framework/clients/client.cc",
+			"framework/clients/httpclient.cc",
+			"framework/cache/cacher.cc",
+			"framework/cache/cacheentry.cc",
+			"framework/httptoolbox.cc",
 			
 			# libdbapi includes
 			"libdbapi/BlobStreambuf.cpp",
@@ -56,6 +58,7 @@ def build (env):
 			"libdbapi/SQLiteStatementHandle.cpp",
 			"libdbapi/SqlStatement.cpp",
 
+			# protocol-specific includes
             "adapters/proxyadapter.cc"
             ]
         )

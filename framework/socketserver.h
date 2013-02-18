@@ -19,7 +19,7 @@
 // project-specific includes
 // the following is the adapter framework for registering adapters
 #include "protocoladapter.h"
-#include "client.h"
+#include "clients/client.h"
 
 const int CONNECTION_BACKLOG = 10;
 
