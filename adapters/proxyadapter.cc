@@ -65,7 +65,9 @@ int ProxyAdapter::onConnect(Client *base_client) {
 			if (REQUEST_THREAD_TIMEOUT_SECONDS > 0) {
 				// we'll just get stuck here until the timer either expires or we 
 				if (!thr.timed_join(boost::posix_time::seconds(REQUEST_THREAD_TIMEOUT_SECONDS))) {
+					thr.interrupt();
 					// REQUEST_THREAD_TIMEOUT_SECONDS seconds elapsed without a response; bail
+					std::cout << "Request to remote server timed out after " << REQUEST_THREAD_TIMEOUT_SECONDS << ", aborting request" << std::endl << std::flush;
 					client.sendHttpResponse(HttpToolbox::makeResponse("504", "Gateway Timeout"));
 					continue;
 				}
@@ -133,6 +135,10 @@ void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req, int reques
 				// retrieve from the cache
 				CacheEntry entry = c.getCacheEntry(req.GetHost(), req.GetPort(), req.GetPath());
 				
+				// check if it's already expired; if so, we have to re-get it
+				if (entry.isExpired())
+					throw CacherExpiredException("Requested resource has expired in the cache, re-fetching...");
+				
 				// handle conditional gets here
 				// if they supplied If-Modified-Since, check the cached object and only return it if it's newer
 				if (req.FindHeader("If-Modified-Since") != "") {
@@ -145,7 +151,7 @@ void ProxyAdapter::handleRequest(HttpClient client, HttpRequest& req, int reques
 						}
 					}
 					catch (CacheEntryInvalidTimestamp &e) {
-						// just continue...
+						// just continue; their request is invalid
 					}
 				}
 

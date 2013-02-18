@@ -23,7 +23,7 @@ const int MAX_CONCURRENT_REQUESTS = 10;
 const int REQUEST_TIMEOUT_SECONDS = 0;
 // amount of seconds to wait for a GET thread to complete
 // making this non-zero serializes requests to the remote server
-const int REQUEST_THREAD_TIMEOUT_SECONDS = 30;
+const int REQUEST_THREAD_TIMEOUT_SECONDS = 30; 
 
 class ProxyAdapter : public ProtocolAdapter {
 public:

@@ -10,7 +10,7 @@ using namespace std;
 int main (int argc, char *argv[])
 {
 	// create instance of our helper socket server
-	SocketServer server(34829);
+	SocketServer server(14805);
 	// create an instance of the adapter that'll handle connections
 	// from the server and process them like an http proxy would
 	ProxyAdapter adapter;
